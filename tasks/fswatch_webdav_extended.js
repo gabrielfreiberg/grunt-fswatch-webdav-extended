@@ -2,7 +2,7 @@
  * grunt-fswatch-webdav-extended
  * https://github.com/brian-gonzalez/grunt-fswatch-webdav-extended
  *
- * Copyright (c) 2016 Brian Gonzalez
+ * Copyright (c) 2016 Born Group
  * Licensed under the MIT license.
  */
 
@@ -21,44 +21,39 @@ var path             = require("path"),
 module.exports = function(grunt) {
   var done,
       options,
-      remote,
-      password,
-      userName,
-      host,
-      localPath,
-      lrPaths,
-      child,
-      ignorePaths,
-      ignoreRemotes,
-      customCartridge;
+      remote;
 
   var cpCache = [];
 
-  grunt.registerMultiTask('fswatch_webdav_extended', '', function() {
+  grunt.registerMultiTask('fswatch_webdav_extended', 'Watch for changes', function() {
     done      = this.async();
-    options   = this.options();
+    options   = this.options({
+      ignore_remotes: [],
+      localPath: process.cwd(),
+      cartridge: '',
+      customPort: 35729
+    });
 
     if (!options.userName) { grunt.fail.warn('missing username option'); }
     if (!options.host) { grunt.fail.warn('missing host option'); }
     if (!options.password) { grunt.fail.warn('missing password option'); }
 
-    userName        = options.userName;
-    host            = options.host;
-    password        = options.password;
-    localPath       = options.localPath || process.cwd();
-    remote          = "https://" + userName + ":" + password + "@" + host;
-    lrPaths         = options.livereload_files || [];
-    ignorePaths     = options.ignore_files || [];
-    ignoreRemotes   = options.ignore_remotes || [];
-    customCartridge = options.customCartridge || '';
+    options.livereloadFilesList = this.filesSrc;
+    options.ignoredFilesList = grunt.file.expand(options.ignored_files);
+    
+    remote = "https://" + options.userName + ":" + options.password + "@" + options.host;
 
-    lrserver.listen(35729, function(err){
-      grunt.log.writeln('... livereload server started ...');
+    lrserver.listen(options.customPort, function(err){
+      if(!!err){
+        grunt.fail.warn(err);
+        return;
+      }
+
+      grunt.log.writeln('Livereload server started.');
     });
 
-
-    findReloadPaths();
-    findLatestRemote(newWatchIt);
+    logMatchingFiles.call(this);
+    findLatestRemote(watchIt);
 
     process.on('exit', function(){
       cpCache.forEach(function (p) {
@@ -75,21 +70,17 @@ module.exports = function(grunt) {
       remote = remote.substr(0, remote.length - 1);
     }
 
-    grunt.log.writeln('Preparing to get latest folder');
+    grunt.log.writeln('Preparing to get latest folder...');
 
-    var options = {url: remote, method: 'GET'};
+    var requestOptions = {url: remote, method: 'GET'};
 
-    request(options, function (err, res, body) {
+    request(requestOptions, function (err, res, body) {
       if (err) {
         console.log(err);
         return;
       }
 
-      if(!!customCartridge){
-        formatRemoteString(customCartridge, callback);
-      }
-
-      else{
+      if( !options.cartridge ){
         jsdom.env(
           body,
           ["http://code.jquery.com/jquery.js"],
@@ -97,7 +88,7 @@ module.exports = function(grunt) {
             var $ = window.$;
             var rows = [];
             var dates = [];
-            var $this, date, tmp, cartridge;
+            var $this, date, tmp;
 
             $("td:last-child tt").each(function () {
                 tmp = {};
@@ -111,49 +102,53 @@ module.exports = function(grunt) {
             });
 
             if (rows.length < 1){
-              grunt.fail.warn('could not find anything like a remote... check your credentials')
+              grunt.fail.warn('Could not find a remote. Check your credentials!')
             }
 
             rows.sort(function (a, b) {
                 return b.date.getTime() - a.date.getTime();
             });
 
-            cartridge = (rows[0].$el.closest('tr').find('td:first-child').text());
+            options.cartridge = (rows[0].$el.closest('tr').find('td:first-child').text());
 
 
             for (var i = 0; i < rows.length - 1; i++){
               var fail = false;
-              ignoreRemotes.forEach(function(r){
-                if (cartridge.indexOf(r) !== -1) {
+              options.ignore_remotes.forEach(function(r){
+                if (options.cartridge.indexOf(r) !== -1) {
                   fail = true;
                   return;
                 }
               });
 
               if (fail) {
-                cartridge = rows[i + 1].$el.closest('tr').find('td:first-child').text();
+                options.cartridge = rows[i + 1].$el.closest('tr').find('td:first-child').text();
               }
             }
 
-            formatRemoteString(cartridge, callback);
+            callback(formatRemoteString(options.cartridge));
           }
         );
+      }
+
+      else{
+        callback(formatRemoteString(options.cartridge));
       }
     });
   }
 
-  function formatRemoteString(cartridge, callback){
+  function formatRemoteString(cartridge){
     cartridge = cartridge.replace(/[\s\/]/g, "");
-    grunt.log.writeln('folder found: ' + cartridge['green']);
+    grunt.log.writeln('Folder found: ' + cartridge['green']);
 
-    remote = remote + '/' + cartridge;
-    remote = remote.replace(/\s/g, "");
+    remote = remote[remote.length - 1] === '/' ? remote + cartridge : remote + '/' + cartridge;
 
-    callback(remote);
+    return remote;
   }
 
-  function newWatchIt(remote) {
-    var watcher = chokidar.watch(localPath, {
+  function watchIt(remote) {
+
+    var watcher = chokidar.watch(options.localPath, {
         persistent: true,
         ignoreInitial: true,
         alwaysStat: true,
@@ -163,50 +158,54 @@ module.exports = function(grunt) {
         }
     });
 
+    grunt.log.writeln('\nWaiting for changes...');
+
     cpCache.push(watcher);
 
     watcher.on('raw', function(event, path, details) {
 
-      console.log('PATH IS', path);
-      var sharedPath = path.substring(localPath.length);
-      console.log('sharedPath is', sharedPath)
-      if (ignorePaths.indexOf(sharedPath) === -1){        
-        syncChange(sharedPath, remote, localPath, function(change){
+      grunt.log.writeln('Local Path is: ', path);
+
+      var sharedPath = path.substring(options.localPath.length),
+          cleanSharedPath = sharedPath[0] === '/' ? sharedPath.substring(1) : sharedPath;
+      
+      grunt.log.writeln('Shared Path is: ', sharedPath);
+
+      if(options.ignoredFilesList.indexOf(cleanSharedPath) !== -1){
+        grunt.log.writeln('File ignored.\n'['blue'].bold);
+      }
+
+      else{
+        syncChange(sharedPath, remote, function(change){
           var change = change.substring(remote.length).toString();
+          
           if (change[0] === '/'){
             change = change.substring(1);
           }
-          if (lrPaths.indexOf(change) !== -1){
+
+          if (options.livereloadFilesList.indexOf(change) !== -1){
             change = new Array(change);
             lrserver.changed({body: {files: change}});
-            console.log('livereloading: ' + change + ' CHANGED');
+            grunt.log.writeln('livereloading: ' + change + ' CHANGED');
           }
         });
-      } else {
-        console.log('FILE ' + sharedPath + ' IGNORED!');
       }
     });
 
   }
 
-
-
-
-
-
-  function syncChange(sharedPath, remote, localPath, callback){
+  function syncChange(sharedPath, remote, callback){
     if (remote[remote.length - 1] !== '/' && sharedPath[0] !== '/'){
       sharedPath = '/' + sharedPath;
     }
     var destPath      = remote + sharedPath;
-    var absLocalPath  = localPath + sharedPath;
+    var absLocalPath  = options.localPath + sharedPath;
     try {
         var stats = fs.lstatSync(absLocalPath);
+
         if (stats.isDirectory()){ 
-            destPath = destPath.replace('/SaksOff5thStorefront', '/');
             postDir(absLocalPath, destPath, sharedPath, callback);
         } else {
-            destPath = destPath.replace('/SaksOff5thStorefront', '/');
             putFile(absLocalPath, destPath, callback);
         }
     }
@@ -218,11 +217,16 @@ module.exports = function(grunt) {
     }
   }
 
+  /**
+   * Removes a specified file from the remote server
+   * @param  {[type]}   destPath [description]
+   * @param  {Function} callback [description]
+   */
   function deleteItem(destPath, callback){
-      request.del(destPath).on('response', function(res){
+      request.del(destPath).on('response', function(response){
         grunt.log.writeln('File or Directory that was being watched was no longer found in local files')
         grunt.log.writeln('Deleting from remote server at ' + destPath)
-        grunt.log.writeln('Server returned ' + res.statusCode );
+        grunt.log.writeln('Server returned ' + response.statusCode );
         callback(destPath);
       });
   }
@@ -230,17 +234,25 @@ module.exports = function(grunt) {
   function putFile(filePath, destPath, callback){
       fs.createReadStream(filePath).pipe(request.put(destPath).on('response',
           function(response){
-              grunt.log.writeln( 'Writing to ' + destPath );
-              grunt.log.writeln('Server returned ' + response.statusCode);
-              callback(destPath);
+            var warnString = 'Server returned: ' + response.statusCode;
+
+              if(response.statusCode >= 200 && response.statusCode < 300){
+                grunt.log.writeln('File match. ' + warnString + '\n' + 'Writing to ' + destPath['green']);
+                callback(destPath);
+              }  
+
+              else{
+                grunt.log.writeln('Couldn\'t match file in server. ' + warnString['red']);
+              }         
           }));    
   }
 
   function postDir(dirPath, destPath, sharedPath, lrcallback){
-      var options = {
-                      url: destPath,
-                      method: 'MKCOL'
-                  };
+      var requestOptions = {
+            url: destPath,
+            method: 'MKCOL'
+          };
+
       function callback (err, response, body){
           if (!err && response.statusCode == 200) {
               grunt.log.writeln('Folder created at ' + destPath);
@@ -249,7 +261,7 @@ module.exports = function(grunt) {
           }
       }
       grunt.log.writeln('New directory found at ' + dirPath + '. Writing.');
-      request(options, callback);
+      request(requestOptions, callback);
       postDirContents(dirPath, lrcallback);
   }
 
@@ -257,51 +269,14 @@ module.exports = function(grunt) {
       grunt.log.writeln('Posting directory contents...');
       walk(dirPath, function(path, stat){
           grunt.log.writeln('found file or directory at ' + path + '...');
-          var sharedPath = path.substring(localPath.length);
-          syncChange(sharedPath, remote, localPath, callback);
+          
+          var sharedPath = path.substring(options.localPath.length);
+          syncChange(sharedPath, remote, callback);
       });
   }
 
-  function findReloadPaths(){
-    console.log('... looking for files to livereload ...');
-    lrPaths = findGlobPaths(lrPaths);
-    console.log('... found ' + lrPaths.length + ' files ...');
+  function logMatchingFiles(){
+    grunt.log.writeln('Looking for files to livereload...');
+    grunt.log.writeln('Found ' + this.filesSrc.length + ' files...');
   }
-
-  function findGlobPaths (arr){
-    var globOptions = {
-      dot: true,
-      matchBase: true,
-      cwd: localPath
-    };
-
-    var globs = [];
-    var idxs  = [];
-
-    arr.forEach(function(v, i){
-      if (glob.hasMagic(v, globOptions) === true){
-        idxs.push(i);
-      }
-    })
-
-    idxs.forEach(function(v){
-      globs.push(arr[v]);
-    })
-
-    arr = arr.filter(function(v){
-      return glob.hasMagic(v, globOptions) === false;
-    })
-
-    globs.forEach(function(v, i){
-      var matches = glob.sync(v, globOptions);
-      matches.forEach(function(value, idx){
-        if (arr.indexOf(value) === -1) {
-          arr.push(value);
-        }
-      })
-
-    });
-    return arr;
-  };
-
 };

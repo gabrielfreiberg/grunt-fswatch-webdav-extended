@@ -1,6 +1,6 @@
 # grunt-fswatch-webdav-extended
 
-> Extending functionality from grunt-fswatch-webdav.
+> Livereloads files local file changes into a WebDav configuration. Extending functionality from grunt-fswatch-webdav.
 
 ## Getting Started
 This plugin requires Grunt `~0.4.5`
@@ -25,12 +25,19 @@ In your project's Gruntfile, add a section named `fswatch_webdav_extended` to th
 ```js
 grunt.initConfig({
   fswatch_webdav_extended: {
-    options: {
-      // Task-specific options go here.
-    },
-    your_target: {
-      // Target-specific file lists and/or options go here.
-    },
+    target: {
+      options: {
+        password: password,
+        userName: username,
+        host: environment + '-host-name.example/webdav/Sites/Cartridges/',
+        ignore_remotes: ['New_Version', 'version'],
+        ignored_files: ['node_modules/**/*', '.DS_Store'],
+        cartridge: cartridge
+      },
+      files: {
+        src: [ISML_DIR + '/**/*.isml', DEFAULT_DIR + '/css/*']
+      }
+    }
   },
 });
 ```
