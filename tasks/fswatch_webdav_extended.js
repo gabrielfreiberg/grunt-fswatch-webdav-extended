@@ -14,7 +14,6 @@ var path             = require("path"),
     fs               = require('fs'),
     request          = require('request'),
     walk             = require('walkdir'),
-    glob             = require('glob'),
     lrserver         = require('tiny-lr')(),
     jsdom            = require('jsdom');
 
