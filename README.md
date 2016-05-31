@@ -1,6 +1,6 @@
 # grunt-fswatch-webdav-extended
 
-> Livereloads files local file changes into a WebDav configuration. Extending functionality from grunt-fswatch-webdav.
+> Syncs local files with a WebDAV configuration and Livereloads local file updates. Extending functionality from grunt-fswatch-webdav.
 
 ## Getting Started
 This plugin requires Grunt `~0.4.5`
@@ -27,70 +27,20 @@ grunt.initConfig({
   fswatch_webdav_extended: {
     target: {
       options: {
-        password: password,
-        userName: username,
-        host: environment + '-host-name.example/webdav/Sites/Cartridges/',
-        ignore_remotes: ['New_Version', 'version'],
-        ignored_files: ['node_modules/**/*', '.DS_Store'],
-        cartridge: cartridge
+        password: password, //host password
+        userName: username, //host username
+        host: 'subdomain.domain/webdav/Sites/Cartridges/', //WebDAV folder base URL
+        ignore_remotes: ['New_Version', 'version'], //[optional] String or Array of strings containing version/folder/catridge names to ignore
+        ignored_files: ['node_modules/**/*', '.DS_Store'], //[optional] Specify files to ignore from the WebDAV sync watch list. Uses Grunt's file syntax
+        cartridge: cartridge //[optional] Custom target cartridge/folder name in case you want to overwrite default name lookup 
       },
       files: {
-        src: [ISML_DIR + '/**/*.isml', DEFAULT_DIR + '/css/*']
+        src: [ISML_DIR + '/**/*.isml', DEFAULT_DIR + '/css/*'] //List of files to livereload
       }
     }
   },
 });
 ```
-
-### Options
-
-#### options.separator
-Type: `String`
-Default value: `',  '`
-
-A string value that is used to do something with whatever.
-
-#### options.punctuation
-Type: `String`
-Default value: `'.'`
-
-A string value that is used to do something else with whatever else.
-
-### Usage Examples
-
-#### Default Options
-In this example, the default options are used to do something with whatever. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result would be `Testing, 1 2 3.`
-
-```js
-grunt.initConfig({
-  fswatch_webdav_extended: {
-    options: {},
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
-  },
-});
-```
-
-#### Custom Options
-In this example, custom options are used to do something else with whatever else. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result in this case would be `Testing: 1 2 3 !!!`
-
-```js
-grunt.initConfig({
-  fswatch_webdav_extended: {
-    options: {
-      separator: ': ',
-      punctuation: ' !!!',
-    },
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
-  },
-});
-```
-
-## Contributing
-In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [Grunt](http://gruntjs.com/).
 
 ## Release History
 _(Nothing yet)_
