@@ -9,9 +9,9 @@
 'use strict';
 
 var path             = require("path"),
+    fs               = require('fs'),
     chokidar         = require('chokidar'),
     async            = require("async"),
-    fs               = require('fs'),
     request          = require('request'),
     walk             = require('walkdir'),
     lrserver         = require('tiny-lr')(),

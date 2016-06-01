@@ -1,6 +1,6 @@
 # grunt-fswatch-webdav-extended
 
-> Syncs local files with a WebDAV configuration and Livereloads local file updates. Extending functionality from grunt-fswatch-webdav.
+> Syncs and livereloads local updates files with a WebDAV configuration. Extending functionality from grunt-fswatch-webdav.
 
 ## Getting Started
 This plugin requires Grunt `~0.4.5`
@@ -27,15 +27,15 @@ grunt.initConfig({
   fswatch_webdav_extended: {
     target: {
       options: {
-        password: password, //host password
-        userName: username, //host username
+        password: 'password', //host password
+        userName: 'username', //host username
         host: 'subdomain.domain/webdav/Sites/Cartridges/', //WebDAV folder base URL
         ignore_remotes: ['New_Version', 'version'], //[optional] String or Array of strings containing version/folder/catridge names to ignore
         ignored_files: ['node_modules/**/*', '.DS_Store'], //[optional] Specify files to ignore from the WebDAV sync watch list. Uses Grunt's file syntax
-        cartridge: cartridge //[optional] Custom target cartridge/folder name in case you want to overwrite default name lookup 
+        cartridge: 'cartridge' //[optional] Custom target cartridge/folder name in case you want to overwrite default name lookup 
       },
       files: {
-        src: [ISML_DIR + '/**/*.isml', DEFAULT_DIR + '/css/*'] //List of files to livereload
+        src: ['path/to/files/**/*.isml',  'path/to/other/files/css/*.css'] //List of files to livereload
       }
     }
   },
