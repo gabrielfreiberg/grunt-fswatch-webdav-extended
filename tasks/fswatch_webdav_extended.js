@@ -24,6 +24,7 @@ module.exports = function(grunt) {
   var cpCache = [];
 
   grunt.registerMultiTask('fswatch_webdav_extended', 'Watch for changes', function() {
+    
     this.async();
     options   = this.options({
       ignored_remotes: [],
@@ -42,7 +43,14 @@ module.exports = function(grunt) {
     remote = "https://" + options.userName + ":" + options.password + "@" + options.host;
 
     logMatchingFiles.call(this);
-    findLatestRemote(options, startLocalWatch);
+
+    if(grunt.option('syncall')){
+      findLatestRemote(options, syncAllFiles);
+    }
+
+    else{
+      findLatestRemote(options, startLocalWatch);
+    }
 
     process.on('exit', function(){
       cpCache.forEach(function (p) {
@@ -236,6 +244,27 @@ module.exports = function(grunt) {
     var prefix = doneString || '';
 
     grunt.log.writeln(prefix + '\nWaiting for changes...\n');
+  }
+
+  function syncAllFiles(remote){
+    var syncableFiles = options.ignored_files.slice(0),
+        filesList;
+
+    syncableFiles.forEach(function(file, i){
+      syncableFiles[i] = '!' + file;
+    });
+
+    syncableFiles.unshift('**/*');
+
+    filesList = grunt.file.expand(syncableFiles);
+
+    filesList.forEach(function(file){
+      syncChange('/' + file, remote, logSyncedFile);
+    });
+  }
+
+  function logSyncedFile(filePath){
+    grunt.log.writeln('Success!'['green']);
   }
 
   /**
