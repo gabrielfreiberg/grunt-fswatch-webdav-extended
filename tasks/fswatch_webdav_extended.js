@@ -247,14 +247,24 @@ module.exports = function(grunt) {
   }
 
   function syncAllFiles(remote){
+
     var syncableFiles = options.ignored_files.slice(0),
+        syncType = grunt.option('syncall'),
         filesList;
 
     syncableFiles.forEach(function(file, i){
       syncableFiles[i] = '!' + file;
     });
 
-    syncableFiles.unshift('**/*');
+    if(typeof syncType === 'string'){
+      syncableFiles.unshift('**/*.' + syncType);
+    }
+
+    else{
+      syncableFiles.unshift('**/*');
+    }
+
+    
 
     filesList = grunt.file.expand(syncableFiles);
 
