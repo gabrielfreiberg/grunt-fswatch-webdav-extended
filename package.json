@@ -1,7 +1,7 @@
 {
   "name": "grunt-fswatch-webdav-extended",
   "description": "WebDAV file syncing and livereload",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "homepage": "https://github.com/brian-gonzalez/grunt-fswatch-webdav-extended",
   "author": {
     "name": "Brian Gonzalez",
