@@ -318,7 +318,15 @@ module.exports = function(grunt) {
     request.del(destPath).on('response', function(response){
       grunt.log.writeln('File or Directory that was being watched was no longer found in local files')
       grunt.log.writeln('Deleting from remote server at ' + destPath)
-      grunt.log.writeln('Server returned ' + response.statusCode );
+
+      if(!!response){
+        grunt.log.writeln('Server returned ' + response.statusCode );
+      }
+
+      else{
+        grunt.log.writeln('EMPTY OR UNAVAILABLE RESPONSE'['red']);
+      }
+      
       callback(destPath);
     });
   }
@@ -326,16 +334,22 @@ module.exports = function(grunt) {
   function putFile(filePath, destPath, callback){
     fs.createReadStream(filePath).pipe(request.put(destPath).on('response',
         function(response){
-          var warnString = 'Server returned: ' + response.statusCode;
+            if(!!response){
+              var warnString = 'Server returned: ' + response.statusCode;
 
-            if(response.statusCode >= 200 && response.statusCode < 300){
-              grunt.log.writeln('File match. ' + warnString + '\n' + 'Writing to ' + destPath['green']);
-              callback(destPath);
-            }  
+              if(response.statusCode >= 200 && response.statusCode < 300){
+                grunt.log.writeln('File match. ' + warnString + '\n' + 'Writing to ' + destPath['green']);
+                callback(destPath);
+              }  
+
+              else{
+                logWaiting('Couldn\'t match file on server. ' + warnString['red']);
+              }   
+            }
 
             else{
-              logWaiting('Couldn\'t match file on server. ' + warnString['red']);
-            }         
+                logWaiting('EMPTY OR UNAVAILABLE RESPONSE'['red']);
+            }      
         }));    
   }
 
@@ -346,10 +360,18 @@ module.exports = function(grunt) {
         };
 
     function rqCallback (err, response, body){
-        if (!err && response.statusCode == 200) {
-            grunt.log.writeln('Folder created at ' + destPath);
-        }else{
-            grunt.log.writeln('Status code: ' + response.statusCode);
+        if(!!response){
+          if (!err && response.statusCode == 200) {
+              grunt.log.writeln('Folder created at ' + destPath);
+          }
+
+          else{
+              grunt.log.writeln('Status code: ' + response.statusCode);
+          }
+        }
+
+        else{
+          grunt.log.writeln('EMPTY OR UNAVAILABLE RESPONSE'['red']);
         }
     }
     grunt.log.writeln('New directory found at ' + dirPath + '. Writing.');
